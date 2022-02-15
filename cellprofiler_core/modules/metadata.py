@@ -44,6 +44,7 @@ from ..pipeline import Pipeline
 from ..preferences import ABSOLUTE_FOLDER_NAME
 from ..preferences import URL_FOLDER_NAME
 from ..preferences import report_progress
+from ..preferences import get_headless
 from ..setting import Binary
 from ..setting import DataTypes
 from ..setting import Divider
@@ -1128,25 +1129,14 @@ not being applied, your choice on this setting may be the culprit.
         def msg(url):
             return "Processing %s" % url
 
-        import wx
         from bioformats.formatreader import get_omexml_metadata
 
-        with wx.ProgressDialog(
-            "Extracting metadata",
-            msg(list(urls)[0]),
-            len(urls),
-            style=wx.PD_CAN_ABORT
-            | wx.PD_APP_MODAL
-            | wx.PD_ELAPSED_TIME
-            | wx.PD_REMAINING_TIME,
-        ) as dlg:
+        def update_all_urls(dlg=None, ui_callback=None):
             errorcount = 0
             for i, url in enumerate(urls):
                 try:
-                    if i > 0:
-                        keep_going, _ = dlg.Update(i, msg(url))
-                        if not keep_going:
-                            break
+                    if dlg is not None and ui_callback is not None and not ui_callback(dlg, i, url):
+                        break
                     if group.filter_choice == F_FILTERED_IMAGES:
                         match = group.filter.evaluate(
                             (
@@ -1161,15 +1151,43 @@ not being applied, your choice on this setting may be the culprit.
                     if metadata is None:
                         metadata = get_omexml_metadata(url=url)
                         filelist.add_metadata(url, metadata)
-                except:
-                    print("Metadata extraction failed for %s" % url)
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.exception(f"Metadata extraction failed for {url}", e)
                     errorcount += 1
-            if errorcount > 0:
-                wx.MessageBox(
-                    "Metadata extraction completed with %i error(s).\n"
-                    "File(s) may be in an incompatible format or "
-                    "corrupted." % errorcount
-                )
+                if errorcount > 0:
+                    msg = f"Metadata extraction completed with {errorcount} error(s).\n"
+                    "File(s) may be in an incompatible format or corrupted."
+                    if dlg is not None:
+                        import wx
+                        wx.MessageBox(msg)
+                    else:
+                        raise ValueError(msg)
+
+        is_headless = get_headless()
+        if not is_headless:
+            import wx
+            with wx.ProgressDialog(
+                    "Extracting metadata",
+                    msg(list(urls)[0]),
+                    len(urls),
+                    style=wx.PD_CAN_ABORT
+                          | wx.PD_APP_MODAL
+                          | wx.PD_ELAPSED_TIME
+                          | wx.PD_REMAINING_TIME,
+            ) as dlg:
+                def ui_callback(_dlg, i, url):
+                    if i > 0:
+                        keep_going, _ = _dlg.Update(i, msg(url))
+                        if not keep_going:
+                            return False
+                    return True
+
+                update_all_urls(dlg=dlg, ui_callback=ui_callback)
+        else:
+            update_all_urls()
+
         group.metadata_autoextracted.value = True
 
     def on_activated(self, workspace):
