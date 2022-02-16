@@ -36,7 +36,7 @@ setuptools.setup(
         "scipy>=1.4.1",
     ],
     license="BSD",
-    name="cellprofiler-core-dg",
+    name="cellprofiler-core",
     package_data={"cellprofiler_core": ["py.typed"]},
     packages=setuptools.find_packages(exclude=["tests"]),
     python_requires=">=3.8",
