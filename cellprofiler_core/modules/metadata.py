@@ -1186,6 +1186,7 @@ not being applied, your choice on this setting may be the culprit.
                                 continue
                         metadata = filelist.get_metadata(url)
                         if metadata is None:
+                            print(f"TTTTTT {url}")
                             metadata = get_omexml_metadata(url=url)
                             filelist.add_metadata(url, metadata)
                     except Exception as e:
