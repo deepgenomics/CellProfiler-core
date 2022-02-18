@@ -1187,7 +1187,7 @@ not being applied, your choice on this setting may be the culprit.
                         metadata = filelist.get_metadata(url)
                         if metadata is None:
                             import javabridge as jutil
-                            print(jutil.run_script('System.getProperty("user.dir")', dict()))
+                            print(jutil.run_script('java.lang.System.getProperty("user.dir")', dict()))
                             print(f"TTTTTT {url}")
                             metadata = get_omexml_metadata(url=url)
                             filelist.add_metadata(url, metadata)
